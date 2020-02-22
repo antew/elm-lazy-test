@@ -137,7 +137,21 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         , onUrlRequest = ClickedLink
         , onUrlChange = ChangedUrl
         }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model of
+        Redirect _ ->
+            Sub.none
+
+        NotFound _ ->
+            Sub.none
+
+        Home subModel ->
+            Home.subscriptions subModel
+                |> Sub.map HomeMsg

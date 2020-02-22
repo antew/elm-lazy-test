@@ -13,7 +13,7 @@ type Page
 
 view : Page -> { title : String, content : Html msg } -> Document msg
 view page { title, content } =
-    { title = title ++ " - starter"
+    { title = title
     , body =
         [ viewHeader page
         , viewContent content

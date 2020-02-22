@@ -45,6 +45,6 @@ module.exports = (_env, options) => ({
     stats: { colors: true },
     historyApiFallback: true,
     overlay: true,
-    port: 3000
+    port: 3001
   }
 });
