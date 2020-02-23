@@ -29,8 +29,11 @@ module.exports = (_env, options) => ({
         exclude: [/elm-stuff/, /node_modules/],
         loader: "elm-webpack-loader",
         options: {
-          debug: options.mode === "development",
-          optimize: options.mode === "production"
+          // debug: options.mode === "development",
+          // optimize: options.mode === "production",
+          debug: false,
+          optimize: true,
+          pathToElm: "shelm"
         }
       }
     ]

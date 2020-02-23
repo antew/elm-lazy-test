@@ -14,16 +14,20 @@
     },
     "indirect": {
       "elm/virtual-dom": "1.0.2"
+    },
+    "locations": {
+      "elm/virtual-dom": {
+        "method": "file",
+        "path": "../virtual-dom"
+      },
+      "elm/browser": {
+        "method": "file",
+        "path": "../browser"
+      }
     }
   },
   "test-dependencies": {
     "direct": {},
     "indirect": {}
-  },
-  "locations": {
-    "elm/virtual-dom": {
-      "method": "file",
-      "path": "../virtual-dom"
-    }
   }
 }
