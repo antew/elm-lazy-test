@@ -13,7 +13,7 @@ type Route
 parser : Parser (Route -> a) a
 parser =
     Parser.oneOf
-        [ Parser.map Home Parser.top
+        [ Parser.map Home (Parser.s "lazy")
         ]
 
 

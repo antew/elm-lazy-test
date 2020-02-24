@@ -5,10 +5,13 @@ const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = (_env, options) => ({
   output: {
-    publicPath: "/",
+    publicPath: "/lazy/",
     chunkFilename: "[name].[contenthash].bundle.js",
     filename: "[name].[contenthash].js",
     path: path.resolve(__dirname, "./dist")
+  },
+  externals: {
+    moment: "moment"
   },
   module: {
     rules: [

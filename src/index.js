@@ -3,75 +3,104 @@ import "./Main.css";
 
 import * as faker from "faker";
 import * as asciichart from "asciichart";
+import * as throttle from "lodash.throttle";
+console.log("Throttle", throttle);
 
 const app = Elm.Main.init({});
-const frameTimes = [];
-let frameStart, frameEnd;
+const padding = "      ";
 const chartOptions = {
   height: 5,
-  padding: '     '
-}
+  padding: padding,
+  format: (x, i) => (padding + x.toFixed(1)).slice(-padding.length)
+};
 //
 // Random number between min and max, inclusive of both min and max
 function numberBetween(min, max) {
   return Math.floor(Math.random() * (max - min)) + min;
 }
 
-app.ports.fakerOutgoing.subscribe(() => {
-  app.ports.fakerIncoming.send({
-    name: faker.name.findName(),
-    avatar: `/static/images/avatars/${numberBetween(1, 43)}.jpg`,
-    message: faker.lorem.paragraph()
-  });
+app.ports.fakerOutgoing.subscribe(count => {
+  const messages = [];
+  while (count > 0) {
+    messages.push({
+      name: faker.name.findName(),
+      avatar: `/lazy/images/avatars/${numberBetween(1, 43)}.jpg`,
+      message: faker.lorem.paragraph()
+    });
+    count--;
+  }
+  app.ports.fakerIncoming.send(messages);
 });
 
 app.ports.loggerOutgoing.subscribe(str => {
-  console.log(str)
+  console.log(str);
 });
 
-frameStart = performance.now();
-function timeFrames() {
-  frameEnd = performance.now();
-  frameTimes.push(frameEnd - frameStart);
-  frameStart = frameEnd;
-
-  var frameChartElem = document.getElementById("frame-chart");
-  var frameData = frameTimes.slice(-45);
-  var frameChart = asciichart.plot(frameData, chartOptions);
-  if (frameChart) frameChartElem.innerHTML = frameChart;
-
-  requestAnimationFrame(timeFrames)
-}
-timeFrames();
-
-setInterval(() => {
-  if (!window.elm_performance) return;
+app.ports.sendReady.subscribe(() => {
   var viewChartElem = document.getElementById("view-chart");
   var diffChartElem = document.getElementById("diff-chart");
   var patchChartElem = document.getElementById("patch-chart");
+  var frameChartElem = document.getElementById("frame-chart");
+  var lazySuccessChartElem = document.getElementById("lazy-success-chart");
+  var lazyFailureChartElem = document.getElementById("lazy-failure-chart");
+  var MAX_SAMPLES = 100;
+  var viewData = [];
+  var diffData = [];
+  var patchData = [];
+  var frameData = [];
+  var frameStart, frameEnd;
 
-  const points = -45;
-  var viewData = window.elm_performance.view.slice(points);
-  var diffData = window.elm_performance.vdom_diff.slice(points);
-  var patchData = window.elm_performance.vdom_patch.slice(points);
+  var lazySuccessData = [0];
+  var lazyFailureData = [0];
+  var lazySuccesses = 0,
+    lazyFailures = 0;
 
-  var viewChart = asciichart.plot(viewData, chartOptions);
-  var diffChart = asciichart.plot(diffData, chartOptions);
-  var patchChart = asciichart.plot(patchData, chartOptions);
+  var updateCharts = throttle(() => {
+    viewChartElem.innerHTML = asciichart.plot(viewData, chartOptions);
+    diffChartElem.innerHTML = asciichart.plot(diffData, chartOptions);
+    patchChartElem.innerHTML = asciichart.plot(patchData, chartOptions);
+    frameChartElem.innerHTML = asciichart.plot(frameData, chartOptions);
+    lazyFailureChartElem.innerHTML = asciichart.plot(lazyFailureData, chartOptions);
+    lazySuccessChartElem.innerHTML = asciichart.plot(lazySuccessData, chartOptions);
+  }, 250);
 
-  /*
-  console.log("-- View Function ---");
-  console.log(viewChart);
-  console.log("-- Virtual DOM Diffing Function ---");
-  console.log(diffChart);
-  console.log("-- Virtual DOM Patching Function ---");
-  console.log(patchChart);
-  console.log("-- Frame Time Chart---");
-  console.log(frameChart);
-  */
+  document.addEventListener("elm-view", event => {
+    if (viewData.length >= MAX_SAMPLES) viewData.shift();
+    viewData.push(event.detail);
+  });
+  document.addEventListener("elm-vdom-diff", event => {
+    if (diffData.length >= MAX_SAMPLES) diffData.shift();
+    diffData.push(event.detail);
+  });
+  document.addEventListener("elm-vdom-patch", event => {
+    if (patchData.length >= MAX_SAMPLES) patchData.shift();
+    patchData.push(event.detail);
 
-  if (viewChart) viewChartElem.innerHTML = viewChart;
-  if (diffChart) diffChartElem.innerHTML = diffChart;
-  if (patchChart) patchChartElem.innerHTML = patchChart;
-  // if (frameChart) frameChartElem.innerHTML = frameChart;
-}, 1000);
+    // view->diff->patch->update charts
+    updateCharts();
+  });
+  document.addEventListener("elm-lazy-success", event => {
+    if (lazySuccessData.length >= MAX_SAMPLES) lazySuccessData.shift();
+    lazySuccesses++;
+    lazySuccessData.push(lazySuccesses);
+  });
+  document.addEventListener("elm-lazy-failure", event => {
+    if (lazyFailureData.length >= MAX_SAMPLES) lazyFailureData.shift();
+    lazyFailures++;
+    lazyFailureData.push(lazyFailures);
+  });
+
+  frameStart = performance.now();
+  var lastFrameTime = 0;
+  var smoothing = 10;
+  function timeFrames() {
+    frameEnd = performance.now();
+    if (frameData.length >= MAX_SAMPLES) frameData.shift();
+    var duration = frameEnd - frameStart;
+    lastFrameTime += (duration * (duration - lastFrameTime)) / smoothing;
+    frameData.push(duration);
+    frameStart = frameEnd;
+    requestAnimationFrame(timeFrames);
+  }
+  timeFrames();
+});
